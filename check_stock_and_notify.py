@@ -3,42 +3,52 @@ from bs4 import BeautifulSoup
 import smtplib
 from email.mime.text import MIMEText
 import os
+from datetime import datetime
 
 PRODUCT_URL = "https://www.nintendo.com/us/store/products/nintendo-switch-2-nintendo-gamecube-controller-120833/"
+LOG_DIR = "logs"
+
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
-EMAIL_USER = os.getenv('EMAIL_USER', 'sevenastros@gmail.com')
-EMAIL_PASS = os.getenv('EMAIL_PASS', 'kfhkgutevzeacvrd')
-EMAIL_TO = os.getenv('EMAIL_TO', 'sevenastros@gmail.com')
+EMAIL_USER = os.getenv('EMAIL_USER')
+EMAIL_PASS = os.getenv('EMAIL_PASS')
+EMAIL_TO = os.getenv('EMAIL_TO')
 
 def check_in_stock():
     headers = {"User-Agent": "Mozilla/5.0"}
-    resp = requests.get(PRODUCT_URL, headers=headers, timeout=10)
-    if resp.status_code != 200:
-        print(f"Failed to fetch page: {resp.status_code}")
-        return False
-    soup = BeautifulSoup(resp.text, 'html.parser')
+    try:
+        r = requests.get(PRODUCT_URL, headers=headers, timeout=10)
+    except Exception as e:
+        return "Check failed"
+    if r.status_code != 200:
+        return "Check failed"
+    soup = BeautifulSoup(r.text, 'html.parser')
     text = soup.get_text()
-    # Checks for common out-of-stock phrases
     if "Out of Stock" in text or "Sold Out" in text:
-        return False
-    return True
+        return "Out of stock"
+    return "In stock"
 
-def send_email():
-    body = f"The product may be in stock! Check: {PRODUCT_URL}"
+def send_email(body, subject):
     msg = MIMEText(body, "plain", "utf-8")
-    msg["Subject"] = "GameCube Controller Restock Alert"
+    msg["Subject"] = subject
     msg["From"] = EMAIL_USER
     msg["To"] = EMAIL_TO
-
     with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
         server.starttls()
         server.login(EMAIL_USER, EMAIL_PASS)
         server.sendmail(EMAIL_USER, [EMAIL_TO], msg.as_string())
 
+def log_check(status, check_time):
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+    log_file = os.path.join(LOG_DIR, check_time.strftime("%m-%d-%Y") + ".txt")
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(f"{check_time.strftime('%m-%d-%Y %H:%M:%S')}, {status}\n")
+
 if __name__ == "__main__":
-    if check_in_stock():
-        send_email()
-        print("In stock! Email sent.")
-    else:
-        print("Still out of stock.")
+    now = datetime.now()
+    status = check_in_stock()
+    log_check(status, now)
+    print(f"{now.strftime('%m-%d-%Y %H:%M:%S')}: Stock status: {status}")
+    if status == "In stock":
+        send_email(f"{now.strftime('%m-%d-%Y %H:%M:%S')} Item is in stock!\nLink: {PRODUCT_URL}", subject="GameCube Controller In Stock Alert")
