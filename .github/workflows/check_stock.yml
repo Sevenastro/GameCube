@@ -1,8 +1,11 @@
-name: Check GameCube Controller Stock
+name: Check GameCube Stock (Pseudo-Random)
 
 on:
   schedule:
-    - cron: "*/30 * * * *"  # Runs every 30 minutes
+    - cron: "7,19,28,43 * * * *"
+    - cron: "2,17,31,52 * * * *"
+    - cron: "13,35,56 * * * *"
+    - cron: "23,49 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -16,6 +19,8 @@ jobs:
           python-version: 3.11
       - name: Install dependencies
         run: pip install requests beautifulsoup4
+      - name: Random sleep 0-30 min
+        run: sleep $(( RANDOM % 1800 ))
       - name: Run stock checker
         env:
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
@@ -24,3 +29,12 @@ jobs:
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: python check_stock_and_notify.py
+      - name: Commit and push log
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add logs/
+          if ! git diff --cached --quiet; then
+            git commit -m "Update stock check log"
+            git push
+          fi
