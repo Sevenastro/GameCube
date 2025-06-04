@@ -1,13 +1,10 @@
-name: Check GameCube Stock (Pseudo-Random)
+name: Check GameCube Stock (Every 40 Minutes)
 permissions:
   contents: write
 
 on:
   schedule:
-    - cron: "7,19,28,43 * * * *"
-    - cron: "2,17,31,52 * * * *"
-    - cron: "13,35,56 * * * *"
-    - cron: "23,49 * * * *"
+    - cron: "0,40 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -34,8 +31,6 @@ jobs:
           python-version: 3.11
       - name: Install dependencies
         run: pip install selenium
-      - name: Random sleep 0-30 min
-        run: sleep $(( RANDOM % 1800 ))
       - name: Run stock checker
         env:
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
