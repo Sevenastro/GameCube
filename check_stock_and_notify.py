@@ -26,17 +26,18 @@ def check_in_stock():
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(PRODUCT_URL)
     try:
+        # 等待页面body加载，保证所有文本都渲染出来
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
         text = driver.find_element(By.TAG_NAME, "body").text
     finally:
         driver.quit()
+    # 检查常见的缺货文案
     if ("Out of Stock" in text) or ("Sold Out" in text):
         return "Out of stock"
-    if ("Add to Cart" in text) or ("Add To Cart" in text):
-        return "In stock"
-    return "Unknown"
+    # 只要没出现缺货文案就当有货
+    return "In stock"
 
 def send_email(body, subject):
     msg = MIMEText(body, "plain", "utf-8")
