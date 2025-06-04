@@ -29,11 +29,9 @@ def check_in_stock():
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(PRODUCT_URL)
     try:
-        # 等待页面body标签加载
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
-        # 保存页面源码和body文本到日志，方便排查实际页面内容
         text = driver.find_element(By.TAG_NAME, "body").text
         if not os.path.exists(LOG_DIR):
             os.makedirs(LOG_DIR)
@@ -41,7 +39,6 @@ def check_in_stock():
             f.write(text)
         with open(os.path.join(LOG_DIR, "last_page.html"), "w", encoding="utf-8") as f:
             f.write(driver.page_source)
-        # 用 class 精确查找 Sold out
         try:
             driver.find_element(By.XPATH, '//span[contains(@class,"ZovBS") and contains(translate(text(),"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz"), "sold out")]')
             return "Out of stock"
@@ -68,6 +65,7 @@ def log_check(status, check_time):
         f.write(f"{check_time.strftime('%m-%d-%Y %H:%M:%S')}, {status}\n")
 
 if __name__ == "__main__":
+    # 获取芝加哥时间
     now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
     now_chicago = now_utc.astimezone(CHICAGO_TZ)
 
