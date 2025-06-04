@@ -8,9 +8,11 @@ import smtplib
 from email.mime.text import MIMEText
 import os
 from datetime import datetime
+import pytz
 
 PRODUCT_URL = "https://www.nintendo.com/us/store/products/nintendo-switch-2-nintendo-gamecube-controller-120833/"
 LOG_DIR = "logs"
+CHICAGO_TZ = pytz.timezone('America/Chicago')
 
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
@@ -66,17 +68,19 @@ def log_check(status, check_time):
         f.write(f"{check_time.strftime('%m-%d-%Y %H:%M:%S')}, {status}\n")
 
 if __name__ == "__main__":
-    now = datetime.now()
+    now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
+    now_chicago = now_utc.astimezone(CHICAGO_TZ)
+
     status = check_in_stock()
-    log_check(status, now)
-    print(f"{now.strftime('%m-%d-%Y %H:%M:%S')}: Stock status: {status}")
+    log_check(status, now_chicago)
+    print(f"{now_chicago.strftime('%m-%d-%Y %H:%M:%S')}: Stock status: {status}")
 
     github_event = os.getenv("GITHUB_EVENT_NAME", "")
     if github_event == "workflow_dispatch":
-        test_subject = "GameCube Controller Stock Check (Test Email: Action Started)"
+        test_subject = f"[{status}] GameCube Controller Stock Check (Test Email: Action Started)"
         test_body = (
             f"[TEST EMAIL]\n"
-            f"Time: {now.strftime('%m-%d-%Y %H:%M:%S')}\n"
+            f"Time: {now_chicago.strftime('%m-%d-%Y %H:%M:%S')} (America/Chicago)\n"
             f"Stock status: {status}\n"
             f"Link: {PRODUCT_URL}\n"
             f"\nThis is a test email sent because the workflow was manually triggered (Run workflow button). "
@@ -86,6 +90,6 @@ if __name__ == "__main__":
 
     if status == "In stock":
         send_email(
-            f"{now.strftime('%m-%d-%Y %H:%M:%S')} Item is in stock!\nLink: {PRODUCT_URL}",
-            subject="GameCube Controller In Stock Alert"
+            f"{now_chicago.strftime('%m-%d-%Y %H:%M:%S')} (America/Chicago) Item is in stock!\nLink: {PRODUCT_URL}",
+            subject=f"[{status}] GameCube Controller In Stock Alert"
         )
