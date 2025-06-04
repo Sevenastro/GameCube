@@ -21,7 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install requests beautifulsoup4
       - name: Random sleep 0-30 min
-        run: sleep $(( RANDOM % 1800 ))
+        run: sleep $(( RANDOM % 400 ))
       - name: Run stock checker
         env:
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
