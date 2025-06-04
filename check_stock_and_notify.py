@@ -65,7 +65,6 @@ def log_check(status, check_time):
         f.write(f"{check_time.strftime('%m-%d-%Y %H:%M:%S')}, {status}\n")
 
 if __name__ == "__main__":
-    # 获取芝加哥时间
     now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
     now_chicago = now_utc.astimezone(CHICAGO_TZ)
 
