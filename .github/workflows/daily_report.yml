@@ -2,7 +2,7 @@ name: GameCube Daily Stock Report
 
 on:
   schedule:
-    - cron: "0 20 * * *"
+    - cron: "0 1 * * *"     # 每天 UTC 01:00，对应芝加哥夏令时晚上8点
   workflow_dispatch:
 
 jobs:
@@ -10,12 +10,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
+
       - name: Install dependencies
         run: pip install requests beautifulsoup4
+
+      - name: Random sleep
+        run: |
+          SECONDS=$((RANDOM % 601))
+          echo "Sleeping for $SECONDS seconds..."
+          sleep $SECONDS
+
       - name: Send daily report
         env:
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
