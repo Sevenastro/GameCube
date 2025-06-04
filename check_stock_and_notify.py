@@ -50,5 +50,24 @@ if __name__ == "__main__":
     status = check_in_stock()
     log_check(status, now)
     print(f"{now.strftime('%m-%d-%Y %H:%M:%S')}: Stock status: {status}")
+
+    # Detect if this run was triggered manually via workflow_dispatch
+    github_event = os.getenv("GITHUB_EVENT_NAME", "")
+    if github_event == "workflow_dispatch":
+        test_subject = "GameCube Controller Stock Check (Test Email: Action Started)"
+        test_body = (
+            f"[TEST EMAIL]\n"
+            f"Time: {now.strftime('%m-%d-%Y %H:%M:%S')}\n"
+            f"Stock status: {status}\n"
+            f"Link: {PRODUCT_URL}\n"
+            f"\nThis is a test email sent because the workflow was manually triggered (Run workflow button). "
+            f"The monitoring system is operational and has started running.\n"
+        )
+        send_email(test_body, test_subject)
+
+    # Still send a separate alert if actually in stock
     if status == "In stock":
-        send_email(f"{now.strftime('%m-%d-%Y %H:%M:%S')} Item is in stock!\nLink: {PRODUCT_URL}", subject="GameCube Controller In Stock Alert")
+        send_email(
+            f"{now.strftime('%m-%d-%Y %H:%M:%S')} Item is in stock!\nLink: {PRODUCT_URL}",
+            subject="GameCube Controller In Stock Alert"
+        )
