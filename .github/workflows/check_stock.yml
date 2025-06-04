@@ -28,6 +28,7 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: python check_stock_and_notify.py
       - name: Commit and push log
         run: |
