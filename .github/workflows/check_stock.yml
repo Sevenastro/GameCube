@@ -12,26 +12,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install latest Google Chrome
+
+      - name: Download Chrome for Testing (124)
         run: |
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list'
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
-      - name: Install compatible ChromeDriver
+          wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/124.0.6367.119/linux64/chrome-linux64.zip
+          unzip chrome-linux64.zip
+          sudo mv chrome-linux64 /opt/
+          sudo ln -sf /opt/chrome-linux64/chrome /usr/bin/google-chrome
+
+      - name: Download Chromedriver for Testing (124)
         run: |
-          CHROME_VERSION=$(google-chrome --version | awk '{print $3}')
-          CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d '.' -f 1)
-          DRIVER_VERSION=$(curl -sS "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_MAJOR_VERSION}")
-          wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${DRIVER_VERSION}/chromedriver_linux64.zip"
-          unzip /tmp/chromedriver.zip -d /usr/local/bin/
-          chmod +x /usr/local/bin/chromedriver
+          wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/124.0.6367.119/linux64/chromedriver-linux64.zip
+          unzip chromedriver-linux64.zip
+          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
+          sudo chmod +x /usr/local/bin/chromedriver
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
+
       - name: Install dependencies
         run: pip install selenium
+
       - name: Run stock checker
         env:
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
@@ -41,6 +44,7 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: python check_stock_and_notify.py
+
       - name: Commit and push log
         run: |
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
