@@ -1,11 +1,12 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 import smtplib
 from email.mime.text import MIMEText
 import os
 from datetime import datetime
-import time
 
 PRODUCT_URL = "https://www.nintendo.com/us/store/products/nintendo-switch-2-nintendo-gamecube-controller-120833/"
 LOG_DIR = "logs"
@@ -24,13 +25,18 @@ def check_in_stock():
     chrome_options.add_argument("--window-size=1920,1080")
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(PRODUCT_URL)
-    time.sleep(10)  # 等待页面和JS加载
-    text = driver.find_element(By.TAG_NAME, "body").text
-    driver.quit()
-    # 可以根据页面实际内容调整判断逻辑
-    if "Out of Stock" in text or "Sold Out" in text:
+    try:
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
+        text = driver.find_element(By.TAG_NAME, "body").text
+    finally:
+        driver.quit()
+    if ("Out of Stock" in text) or ("Sold Out" in text):
         return "Out of stock"
-    return "In stock"
+    if ("Add to Cart" in text) or ("Add To Cart" in text):
+        return "In stock"
+    return "Unknown"
 
 def send_email(body, subject):
     msg = MIMEText(body, "plain", "utf-8")
