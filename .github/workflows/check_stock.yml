@@ -1,59 +1,96 @@
-name: Check GameCube Stock (Every 40 Minutes)
-permissions:
-  contents: write
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
+import smtplib
+from email.mime.text import MIMEText
+import os
+from datetime import datetime
+import pytz
 
-on:
-  schedule:
-    - cron: "0,40 * * * *"
-  workflow_dispatch:
+PRODUCT_URL = "https://www.nintendo.com/us/store/products/nintendo-switch-2-nintendo-gamecube-controller-120833/"
+LOG_DIR = "logs"
+CHICAGO_TZ = pytz.timezone('America/Chicago')
 
-jobs:
-  check_stock:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USER = os.getenv('EMAIL_USER')
+EMAIL_PASS = os.getenv('EMAIL_PASS')
+EMAIL_TO = os.getenv('EMAIL_TO')
 
-      - name: Download Chrome for Testing (124)
-        run: |
-          set -e
-          wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/124.0.6367.119/linux64/chrome-linux64.zip
-          unzip chrome-linux64.zip
-          sudo mv chrome-linux64 /opt/
-          sudo ln -sf /opt/chrome-linux64/chrome /usr/bin/google-chrome
+def check_in_stock():
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920,1080")
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get(PRODUCT_URL)
+    try:
+        # 等待页面body标签加载
+        WebDriverWait(driver, 20).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
+        # 保存页面源码和body文本到日志，方便排查实际页面内容
+        text = driver.find_element(By.TAG_NAME, "body").text
+        if not os.path.exists(LOG_DIR):
+            os.makedirs(LOG_DIR)
+        with open(os.path.join(LOG_DIR, "last_body_text.txt"), "w", encoding="utf-8") as f:
+            f.write(text)
+        with open(os.path.join(LOG_DIR, "last_page.html"), "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
+        # 用 class 精确查找 Sold out
+        try:
+            driver.find_element(By.XPATH, '//span[contains(@class,"ZovBS") and contains(translate(text(),"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz"), "sold out")]')
+            return "Out of stock"
+        except NoSuchElementException:
+            return "In stock"
+    finally:
+        driver.quit()
 
-      - name: Download Chromedriver for Testing (124)
-        run: |
-          set -e
-          wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/124.0.6367.119/linux64/chromedriver-linux64.zip
-          unzip chromedriver-linux64.zip
-          sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
-          sudo chmod +x /usr/local/bin/chromedriver
+def send_email(body, subject):
+    msg = MIMEText(body, "plain", "utf-8")
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_USER
+    msg["To"] = EMAIL_TO
+    with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASS)
+        server.sendmail(EMAIL_USER, [EMAIL_TO], msg.as_string())
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.11
+def log_check(status, check_time):
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
+    log_file = os.path.join(LOG_DIR, check_time.strftime("%m-%d-%Y") + ".txt")
+    with open(log_file, "a", encoding="utf-8") as f:
+        f.write(f"{check_time.strftime('%m-%d-%Y %H:%M:%S')}, {status}\n")
 
-      - name: Install dependencies
-        run: pip install selenium
+if __name__ == "__main__":
+    # 获取芝加哥时间
+    now_utc = datetime.utcnow().replace(tzinfo=pytz.utc)
+    now_chicago = now_utc.astimezone(CHICAGO_TZ)
 
-      - name: Run stock checker
-        env:
-          EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
-          EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
-          EMAIL_USER: ${{ secrets.EMAIL_USER }}
-          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
-          EMAIL_TO: ${{ secrets.EMAIL_TO }}
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-        run: python check_stock_and_notify.py
+    status = check_in_stock()
+    log_check(status, now_chicago)
+    print(f"{now_chicago.strftime('%m-%d-%Y %H:%M:%S')}: Stock status: {status}")
 
-      - name: Commit and push log
-        run: |
-          set -e
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add logs/
-          if ! git diff --cached --quiet; then
-            git commit -m "Update stock check log"
-            git push
-          fi
+    github_event = os.getenv("GITHUB_EVENT_NAME", "")
+    if github_event == "workflow_dispatch":
+        test_subject = f"[{status}] GameCube Controller Stock Check (Test Email: Action Started)"
+        test_body = (
+            f"[TEST EMAIL]\n"
+            f"Time: {now_chicago.strftime('%m-%d-%Y %H:%M:%S')} (America/Chicago)\n"
+            f"Stock status: {status}\n"
+            f"Link: {PRODUCT_URL}\n"
+            f"\nThis is a test email sent because the workflow was manually triggered (Run workflow button). "
+            f"The monitoring system is operational and has started running.\n"
+        )
+        send_email(test_body, test_subject)
+
+    if status == "In stock":
+        send_email(
+            f"{now_chicago.strftime('%m-%d-%Y %H:%M:%S')} (America/Chicago) Item is in stock!\nLink: {PRODUCT_URL}",
+            subject=f"[{status}] GameCube Controller In Stock Alert"
+        )
