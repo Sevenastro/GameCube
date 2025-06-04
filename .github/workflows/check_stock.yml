@@ -1,5 +1,6 @@
 name: Check GameCube Stock (Pseudo-Random)
-
+permissions:
+  contents: write
 on:
   schedule:
     - cron: "7,19,28,43 * * * *"
