@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: 3.11
       - name: Install dependencies
-        run: pip install smtplib email
+        run: pip install requests beautifulsoup4
       - name: Run test email script
         env:
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
