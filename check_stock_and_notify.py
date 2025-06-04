@@ -1,9 +1,11 @@
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
 import smtplib
 from email.mime.text import MIMEText
 import os
 from datetime import datetime
+import time
 
 PRODUCT_URL = "https://www.nintendo.com/us/store/products/nintendo-switch-2-nintendo-gamecube-controller-120833/"
 LOG_DIR = "logs"
@@ -15,15 +17,17 @@ EMAIL_PASS = os.getenv('EMAIL_PASS')
 EMAIL_TO = os.getenv('EMAIL_TO')
 
 def check_in_stock():
-    headers = {"User-Agent": "Mozilla/5.0"}
-    try:
-        r = requests.get(PRODUCT_URL, headers=headers, timeout=10)
-    except Exception as e:
-        return "Check failed"
-    if r.status_code != 200:
-        return "Check failed"
-    soup = BeautifulSoup(r.text, 'html.parser')
-    text = soup.get_text()
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--window-size=1920,1080")
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get(PRODUCT_URL)
+    time.sleep(10)  # 等待页面和JS加载
+    text = driver.find_element(By.TAG_NAME, "body").text
+    driver.quit()
+    # 可以根据页面实际内容调整判断逻辑
     if "Out of Stock" in text or "Sold Out" in text:
         return "Out of stock"
     return "In stock"
@@ -51,7 +55,6 @@ if __name__ == "__main__":
     log_check(status, now)
     print(f"{now.strftime('%m-%d-%Y %H:%M:%S')}: Stock status: {status}")
 
-    # Detect if this run was triggered manually via workflow_dispatch
     github_event = os.getenv("GITHUB_EVENT_NAME", "")
     if github_event == "workflow_dispatch":
         test_subject = "GameCube Controller Stock Check (Test Email: Action Started)"
@@ -65,7 +68,6 @@ if __name__ == "__main__":
         )
         send_email(test_body, test_subject)
 
-    # Still send a separate alert if actually in stock
     if status == "In stock":
         send_email(
             f"{now.strftime('%m-%d-%Y %H:%M:%S')} Item is in stock!\nLink: {PRODUCT_URL}",
