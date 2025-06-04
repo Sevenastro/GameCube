@@ -40,6 +40,12 @@ jobs:
           sudo chmod +x /usr/local/bin/chromedriver
           chromedriver --version
 
+      - name: Random sleep before running
+        run: |
+          SECONDS=$((RANDOM % 601))
+          echo "Sleeping for $SECONDS seconds..."
+          sleep $SECONDS
+
       - name: Run stock check script
         env:
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
