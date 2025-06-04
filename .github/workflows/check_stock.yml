@@ -15,6 +15,7 @@ jobs:
 
       - name: Download Chrome for Testing (124)
         run: |
+          set -e
           wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/124.0.6367.119/linux64/chrome-linux64.zip
           unzip chrome-linux64.zip
           sudo mv chrome-linux64 /opt/
@@ -22,6 +23,7 @@ jobs:
 
       - name: Download Chromedriver for Testing (124)
         run: |
+          set -e
           wget https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/124.0.6367.119/linux64/chromedriver-linux64.zip
           unzip chromedriver-linux64.zip
           sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
@@ -47,9 +49,11 @@ jobs:
 
       - name: Commit and push log
         run: |
+          set -e
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
           git add logs/
           if ! git diff --cached --quiet; then
             git commit -m "Update stock check log"
             git push
+          fi
