@@ -1,6 +1,7 @@
 name: Check GameCube Stock (Pseudo-Random)
 permissions:
   contents: write
+
 on:
   schedule:
     - cron: "7,19,28,43 * * * *"
@@ -14,14 +15,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Chrome
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          sudo apt install -y ./google-chrome-stable_current_amd64.deb
+      - name: Install Chromedriver
+        run: |
+          CHROME_VERSION=$(google-chrome --version | awk '{print $3}' | cut -d'.' -f1)
+          DRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION})
+          wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/${DRIVER_VERSION}/chromedriver_linux64.zip"
+          unzip /tmp/chromedriver.zip -d /usr/local/bin/
+          chmod +x /usr/local/bin/chromedriver
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: 3.11
       - name: Install dependencies
-        run: pip install requests beautifulsoup4
+        run: pip install selenium
       - name: Random sleep 0-30 min
-        run: sleep $(( RANDOM % 400 ))
+        run: sleep $(( RANDOM % 1800 ))
       - name: Run stock checker
         env:
           EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
@@ -39,4 +53,3 @@ jobs:
           if ! git diff --cached --quiet; then
             git commit -m "Update stock check log"
             git push
-          fi
