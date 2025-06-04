@@ -30,9 +30,17 @@ def check_in_stock():
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
+        # 保存调试用页面内容
+        text = driver.find_element(By.TAG_NAME, "body").text
+        if not os.path.exists(LOG_DIR):
+            os.makedirs(LOG_DIR)
+        with open(os.path.join(LOG_DIR, "last_body_text.txt"), "w", encoding="utf-8") as f:
+            f.write(text)
+        with open(os.path.join(LOG_DIR, "last_page.html"), "w", encoding="utf-8") as f:
+            f.write(driver.page_source)
         # 精准查找 Sold out 标签
         try:
-            driver.find_element(By.XPATH, '//span[contains(@class, "ZovBS") and contains(text(), "Sold out")]')
+            driver.find_element(By.XPATH, '//span[contains(@class, "ZovBS") and contains(translate(text(),"ABCDEFGHIJKLMNOPQRSTUVWXYZ","abcdefghijklmnopqrstuvwxyz"), "sold out")]')
             return "Out of stock"
         except NoSuchElementException:
             return "In stock"
@@ -70,13 +78,4 @@ if __name__ == "__main__":
             f"Time: {now.strftime('%m-%d-%Y %H:%M:%S')}\n"
             f"Stock status: {status}\n"
             f"Link: {PRODUCT_URL}\n"
-            f"\nThis is a test email sent because the workflow was manually triggered (Run workflow button). "
-            f"The monitoring system is operational and has started running.\n"
-        )
-        send_email(test_body, test_subject)
-
-    if status == "In stock":
-        send_email(
-            f"{now.strftime('%m-%d-%Y %H:%M:%S')} Item is in stock!\nLink: {PRODUCT_URL}",
-            subject="GameCube Controller In Stock Alert"
-        )
+            f"\
