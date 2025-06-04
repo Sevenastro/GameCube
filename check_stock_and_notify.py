@@ -3,6 +3,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 import smtplib
 from email.mime.text import MIMEText
 import os
@@ -26,18 +27,17 @@ def check_in_stock():
     driver = webdriver.Chrome(options=chrome_options)
     driver.get(PRODUCT_URL)
     try:
-        # 等待页面body加载，保证所有文本都渲染出来
         WebDriverWait(driver, 20).until(
             EC.presence_of_element_located((By.TAG_NAME, "body"))
         )
-        text = driver.find_element(By.TAG_NAME, "body").text
+        # 精准查找 Sold out 标签
+        try:
+            driver.find_element(By.XPATH, '//span[contains(@class, "ZovBS") and contains(text(), "Sold out")]')
+            return "Out of stock"
+        except NoSuchElementException:
+            return "In stock"
     finally:
         driver.quit()
-    # 检查常见的缺货文案
-    if ("Out of Stock" in text) or ("Sold Out" in text):
-        return "Out of stock"
-    # 只要没出现缺货文案就当有货
-    return "In stock"
 
 def send_email(body, subject):
     msg = MIMEText(body, "plain", "utf-8")
