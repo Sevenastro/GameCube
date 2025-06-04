@@ -2,7 +2,7 @@ name: Check GameCube Controller Stock
 
 on:
   schedule:
-    - cron: '*/29 * * * *'   # 每29分钟运行一次
+    - cron: '*/29 * * * *'   # 每29分钟运行一次（UTC时间）
   workflow_dispatch:
 
 jobs:
@@ -35,7 +35,8 @@ jobs:
           CHROMEDRIVER_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d '.' -f 1)
           wget -O /tmp/chromedriver.zip https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/${CHROME_VERSION}/linux64/chromedriver-linux64.zip || wget -O /tmp/chromedriver.zip https://chromedriver.storage.googleapis.com/${CHROMEDRIVER_MAJOR_VERSION}.0.0/chromedriver_linux64.zip
           unzip /tmp/chromedriver.zip -d /tmp/
-          sudo mv /tmp/chromedriver* /usr/local/bin/chromedriver
+          sudo mkdir -p /usr/local/bin
+          sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver
           sudo chmod +x /usr/local/bin/chromedriver
           chromedriver --version
 
